@@ -1,0 +1,11 @@
+framework: [terraform]
+soft-fail: false
+skip-check:
+  # Documented, accepted risks for a low-cost demo (see docs/README):
+  - CKV_AWS_144   # S3 cross-region replication
+  - CKV_AWS_18    # S3 access logging
+  - CKV2_AWS_62   # S3 event notifications
+  - CKV_AWS_145   # S3 KMS CMK (SSE-S3 used to avoid KMS cost)
+  - CKV2_AWS_61   # S3 lifecycle config
+  - CKV2_AWS_11   # VPC flow logs (enable in prod via variable)
+  - CKV_AWS_126   # detailed monitoring covered by var

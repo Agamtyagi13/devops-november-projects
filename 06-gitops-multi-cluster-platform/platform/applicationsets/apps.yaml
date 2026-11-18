@@ -1,0 +1,25 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: podinfo
+  namespace: argocd
+spec:
+  goTemplate: true
+  generators:
+    - clusters: {}
+  template:
+    metadata:
+      name: "{{.name}}-podinfo"
+    spec:
+      project: default
+      source:
+        repoURL: REPO_URL
+        targetRevision: main
+        # overlay chosen per cluster name: overlays/dev or overlays/prod
+        path: "06-gitops-multi-cluster-platform/apps/podinfo/overlays/{{.name}}"
+      destination:
+        server: "{{.server}}"
+        namespace: podinfo
+      syncPolicy:
+        automated: { prune: true, selfHeal: true }
+        syncOptions: [CreateNamespace=true]

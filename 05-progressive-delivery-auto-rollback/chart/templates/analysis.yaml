@@ -1,0 +1,32 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: {{ .Release.Name }}-health
+spec:
+  args:
+    - name: canary-service
+  metrics:
+    # Service-level check 1: success rate of the canary pods must stay above threshold
+    - name: success-rate
+      interval: {{ .Values.analysis.interval }}
+      count: {{ .Values.analysis.count }}
+      failureLimit: {{ .Values.analysis.failureLimit }}
+      successCondition: "len(result) == 0 || result[0] >= {{ .Values.analysis.successRateThreshold }}"
+      provider:
+        prometheus:
+          address: {{ .Values.analysis.prometheusAddress }}
+          query: |
+            sum(rate(http_requests_total{status!~"5..", version="{{ .Values.app.version }}"}[1m]))
+            /
+            sum(rate(http_requests_total{version="{{ .Values.app.version }}"}[1m]))
+    # Service-level check 2: p95 latency
+    - name: p95-latency
+      interval: {{ .Values.analysis.interval }}
+      count: {{ .Values.analysis.count }}
+      failureLimit: {{ .Values.analysis.failureLimit }}
+      successCondition: "len(result) == 0 || result[0] <= {{ .Values.analysis.p95LatencySeconds }}"
+      provider:
+        prometheus:
+          address: {{ .Values.analysis.prometheusAddress }}
+          query: |
+            histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{version="{{ .Values.app.version }}"}[1m])) by (le))

@@ -1,0 +1,18 @@
+image:
+  repository: ghcr.io/OWNER/progressive-demo
+  tag: v1
+replicas: 5
+app:
+  version: v1
+  errorRate: "0"
+  latencyMs: "0"
+canary:
+  firstWeight: 20
+  pause: 60s        # promotion gate: hold while analysis evaluates metrics
+analysis:
+  successRateThreshold: 0.95   # service-level check
+  p95LatencySeconds: 0.5
+  interval: 20s
+  count: 4
+  failureLimit: 1
+  prometheusAddress: http://kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090

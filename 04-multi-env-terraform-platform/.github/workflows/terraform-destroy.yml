@@ -1,0 +1,26 @@
+name: terraform-destroy
+on:
+  workflow_dispatch:
+    inputs:
+      env:
+        type: choice
+        options: [dev, staging]
+        required: true
+permissions:
+  id-token: write
+  contents: read
+jobs:
+  destroy:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.env }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN_PREFIX }}-${{ inputs.env }}
+          aws-region: ap-south-1
+      - run: terraform init -backend-config="bucket=${{ vars.TF_STATE_BUCKET }}"
+        working-directory: envs/${{ inputs.env }}
+      - run: terraform destroy -auto-approve
+        working-directory: envs/${{ inputs.env }}

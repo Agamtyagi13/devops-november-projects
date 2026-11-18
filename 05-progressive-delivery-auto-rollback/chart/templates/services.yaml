@@ -1,0 +1,17 @@
+{{- range $suffix := list "stable" "canary" }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $.Release.Name }}-{{ $suffix }}
+  labels:
+    app: {{ $.Release.Name }}
+    role: {{ $suffix }}
+spec:
+  selector:
+    app: {{ $.Release.Name }}
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+{{- end }}

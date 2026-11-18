@@ -1,0 +1,36 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: platform-addons
+  namespace: argocd
+spec:
+  goTemplate: true
+  generators:
+    - matrix:
+        generators:
+          - clusters: {}          # every cluster registered in Argo CD (dev + prod)
+          - list:
+              elements:
+                - { addon: cert-manager,     chart: cert-manager,     repo: https://charts.jetstack.io,                    version: v1.15.3, ns: cert-manager,     wave: "0" }
+                - { addon: external-secrets, chart: external-secrets, repo: https://charts.external-secrets.io,            version: 0.9.20,  ns: external-secrets, wave: "0" }
+                - { addon: kyverno,          chart: kyverno,          repo: https://kyverno.github.io/kyverno/,            version: 3.2.6,   ns: kyverno,          wave: "0" }
+  template:
+    metadata:
+      name: "{{.name}}-{{.addon}}"
+      annotations:
+        argocd.argoproj.io/sync-wave: "{{.wave}}"
+    spec:
+      project: default
+      source:
+        repoURL: "{{.repo}}"
+        chart: "{{.chart}}"
+        targetRevision: "{{.version}}"
+        helm:
+          valuesObject:
+            installCRDs: true
+      destination:
+        server: "{{.server}}"
+        namespace: "{{.ns}}"
+      syncPolicy:
+        automated: { prune: true, selfHeal: true }
+        syncOptions: [CreateNamespace=true, ServerSideApply=true]

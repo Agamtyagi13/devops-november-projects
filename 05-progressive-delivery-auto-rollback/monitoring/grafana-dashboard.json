@@ -1,0 +1,12 @@
+{
+  "title": "Progressive Delivery - Canary Health",
+  "schemaVersion": 39,
+  "panels": [
+    {"id":1,"type":"timeseries","title":"Request rate by version","gridPos":{"h":8,"w":12,"x":0,"y":0},
+     "targets":[{"expr":"sum(rate(http_requests_total[1m])) by (version)","legendFormat":"{{version}}"}]},
+    {"id":2,"type":"timeseries","title":"Success rate by version","gridPos":{"h":8,"w":12,"x":12,"y":0},
+     "targets":[{"expr":"sum(rate(http_requests_total{status!~\"5..\"}[1m])) by (version) / sum(rate(http_requests_total[1m])) by (version)","legendFormat":"{{version}}"}]},
+    {"id":3,"type":"timeseries","title":"p95 latency by version","gridPos":{"h":8,"w":12,"x":0,"y":8},
+     "targets":[{"expr":"histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[1m])) by (le, version))","legendFormat":"{{version}}"}]}
+  ]
+}

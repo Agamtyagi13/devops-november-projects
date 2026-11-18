@@ -1,0 +1,60 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: {{ .Release.Name }}
+spec:
+  replicas: {{ .Values.replicas }}
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}
+    spec:
+      containers:
+        - name: app
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          ports:
+            - containerPort: 8080
+              name: http
+          env:
+            - name: APP_VERSION
+              value: {{ .Values.app.version | quote }}
+            - name: ERROR_RATE
+              value: {{ .Values.app.errorRate | quote }}
+            - name: LATENCY_MS
+              value: {{ .Values.app.latencyMs | quote }}
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            periodSeconds: 5
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+  strategy:
+    canary:
+      canaryService: {{ .Release.Name }}-canary
+      stableService: {{ .Release.Name }}-stable
+      # Background analysis runs from step 1 onward; a failed check aborts and rolls back automatically.
+      analysis:
+        startingStep: 1
+        templates:
+          - templateName: {{ .Release.Name }}-health
+        args:
+          - name: canary-service
+            value: {{ .Release.Name }}-canary
+      steps:
+        - setWeight: {{ .Values.canary.firstWeight }}
+        - pause:
+            duration: {{ .Values.canary.pause }}
+        - setWeight: 50
+        - pause:
+            duration: {{ .Values.canary.pause }}
+        - setWeight: 100

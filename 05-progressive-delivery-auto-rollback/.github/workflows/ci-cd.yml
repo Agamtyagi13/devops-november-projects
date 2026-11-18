@@ -1,0 +1,39 @@
+name: build-and-release
+on:
+  push:
+    branches: [main]
+    paths: ["05-progressive-delivery-auto-rollback/app/**"]
+permissions:
+  contents: write
+  packages: write
+env:
+  IMAGE: ghcr.io/${{ github.repository_owner }}/progressive-demo
+defaults:
+  run:
+    working-directory: 05-progressive-delivery-auto-rollback
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r app/requirements.txt flake8 && flake8 app --max-line-length 120
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: 05-progressive-delivery-auto-rollback/app
+          push: true
+          tags: ${{ env.IMAGE }}:${{ github.sha }}
+      # GitOps: bump the tag in Git; Argo CD syncs and Argo Rollouts runs the canary
+      - name: Bump image tag
+        run: |
+          sed -i "s|^  tag: .*|  tag: ${{ github.sha }}|" chart/values.yaml
+          sed -i "s|^  version: .*|  version: ${GITHUB_SHA::7}|" chart/values.yaml
+          git config user.name "github-actions"; git config user.email "actions@github.com"
+          git commit -am "release: ${GITHUB_SHA::7}" && git push

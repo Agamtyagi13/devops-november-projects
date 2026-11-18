@@ -1,0 +1,27 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: platform-config
+  namespace: argocd
+spec:
+  goTemplate: true
+  generators:
+    - clusters: {}
+  template:
+    metadata:
+      name: "{{.name}}-platform-config"
+      annotations:
+        argocd.argoproj.io/sync-wave: "1"
+    spec:
+      project: default
+      source:
+        repoURL: REPO_URL
+        targetRevision: main
+        path: 06-gitops-multi-cluster-platform/platform/policies
+      destination:
+        server: "{{.server}}"
+        namespace: platform
+      syncPolicy:
+        automated: { prune: true, selfHeal: true }
+        syncOptions: [CreateNamespace=true, SkipDryRunOnMissingResource=true]
+        retry: { limit: 10, backoff: { duration: 20s, factor: 2 } }   # wait for CRDs from addons

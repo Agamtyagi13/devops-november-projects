@@ -1,0 +1,28 @@
+name: _apply
+on:
+  workflow_call:
+    inputs:
+      env:
+        required: true
+        type: string
+permissions:
+  id-token: write
+  contents: read
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    # GitHub Environment with "Required reviewers" = plan approval gate (configure for staging, prod)
+    environment: ${{ inputs.env }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN_PREFIX }}-${{ inputs.env }}
+          aws-region: ap-south-1
+      - run: terraform init -backend-config="bucket=${{ vars.TF_STATE_BUCKET }}"
+        working-directory: envs/${{ inputs.env }}
+      - run: terraform plan -out=tfplan
+        working-directory: envs/${{ inputs.env }}
+      - run: terraform apply -auto-approve tfplan
+        working-directory: envs/${{ inputs.env }}

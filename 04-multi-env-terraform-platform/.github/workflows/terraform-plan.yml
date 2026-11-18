@@ -1,0 +1,45 @@
+name: terraform-plan
+on:
+  pull_request:
+    paths: ["envs/**", "modules/**"]
+permissions:
+  id-token: write
+  contents: read
+  pull-requests: write
+jobs:
+  security-and-fmt:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+      - run: terraform fmt -check -recursive
+      - name: Checkov policy scan
+        uses: bridgecrewio/checkov-action@v12
+        with:
+          directory: .
+          framework: terraform
+          config_file: .checkov.yaml
+  plan:
+    needs: security-and-fmt
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        env: [dev, staging, prod]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+      - uses: aws-actions/configure-aws-credentials@v4   # keyless OIDC, no stored AWS secrets
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN_PREFIX }}-${{ matrix.env }}
+          aws-region: ap-south-1
+      - run: terraform init -backend-config="bucket=${{ vars.TF_STATE_BUCKET }}"
+        working-directory: envs/${{ matrix.env }}
+      - run: terraform validate
+        working-directory: envs/${{ matrix.env }}
+      - run: terraform plan -no-color -out=tfplan | tee plan.txt
+        working-directory: envs/${{ matrix.env }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: plan-${{ matrix.env }}
+          path: envs/${{ matrix.env }}/plan.txt
